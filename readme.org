@@ -1,0 +1,33 @@
+Piper TTS Dockerized example
+
+* What and Why
+
+This is a containerized [[https://github.com/rhasspy/piper/][Piper]], because I couldn't figure out how to run it natively on Mac. Sure, theres ~say~ comand on Mac, but it still sounds raspy and robotic compared to some models of Piper, and damn... they do sound very natural and sexy.
+
+* Prerequisites
+ - Docker (duh)
+ - ~aplay~ (on Linux should be available by default),
+   or ~sox~ - ~brew install sox~
+
+* How
+
+1. Clone and build:
+
+#+begin_src sh
+git clone https://github.com/agzam/dockerized-piper \
+    && cd dockerized-piper \
+    && docker build -t piper-tts .
+#+end_src
+
+2. Run it:
+
+#+begin_src sh :results output silent
+echo "The quick brown fox jumps over the lazy dog" \
+    | docker run --rm -i piper-tts \
+    --model en_US-hfc_female-medium.onnx \
+    --length_scale 0.5 \
+    --sentence_silence 0.1 \
+    --output_raw \
+    | sox -t raw -r 22050 -b 16 -e signed-integer -c 1 - -d
+#+end_src
+
