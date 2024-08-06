@@ -2,11 +2,11 @@ Piper TTS Dockerized example
 
 * What and Why
 
-This is a containerized [[https://github.com/rhasspy/piper/][Piper]], because I couldn't figure out how to run it natively on Mac. Sure, theres ~say~ comand on Mac, but it still sounds raspy and robotic compared to some models of Piper, and damn... they do sound very natural and sexy.
+This is a containerized [[https://github.com/rhasspy/piper/][Piper]], because I couldn't figure out how to run it natively on Mac. Sure, there's ~say~ comand on Mac, but it still sounds raspy and robotic compared to some models of Piper, and damn... they do sound very natural and sexy.
 
 * Prerequisites
  - Docker (duh)
- - ~aplay~ (on Linux should be available by default),
+ - either ~aplay~ (on Linux should be available by default),
    or ~sox~ - ~brew install sox~
 
 * How
@@ -38,3 +38,48 @@ This is a containerized [[https://github.com/rhasspy/piper/][Piper]], because I 
            --output_raw \
            | sox -t raw -r 22050 -b 16 -e signed-integer -c 1 - -d
    #+end_src
+
+* Example use in Hammerspoon:
+
+#+begin_src fennel
+(hs.hotkey.bind
+ [:cmd :shift :option :ctrl] "s"
+ (fn []
+   "TTS Speak selected text."
+   (hs.eventtap.keyStroke [:cmd] :c)
+   (let [cmd (string.format
+              (.. "echo '%s' | /opt/homebrew/bin/docker run --rm -i piper-tts "
+                  "--model en_US-hfc_female-medium.onnx "
+                  "--length_scale 0.7 --sentence_silence 0.1 --output_raw "
+                  "| /opt/homebrew/bin/sox -t raw -r 22050 -b 16 -e signed-integer -c 1 - -d")
+              (hs.pasteboard.readString))]
+     (io.popen cmd))))
+#+end_src
+
+* Example use in Emacs:
+
+https://github.com/agzam/.doom.d/blob/main/modules/custom/ai/autoload/piper.el#L36
+
+#+begin_src elisp
+(defun buffer->piper-tts (buffer &optional model)
+  "Sends given buffer content to piper-tts."
+  (let* ((model (or model piper-voice-model))
+         (piper (executable-find "piper-tts"))
+         (tmp (make-temp-file "tts-input-"))
+         (_ (with-temp-file tmp
+              (insert-buffer-substring buffer))))
+    (unless piper (user-error "piper-tts executable not found."))
+    (when (get-process "tts")
+      (kill-process (get-process "tts")))
+    (start-process
+     "tts" nil
+     "sh" "-c"
+     (format
+      (concat "cat %s | %s --model %s "
+              "--length_scale 0.7 "
+              "--sentence_silence 0.1 "
+              "--output_raw | %s")
+      (shell-quote-argument tmp)
+      piper model piper-player-command))
+    (run-with-timer 2 nil (lambda (tfile) (delete-file tfile)) tmp)))
+#+end_src
